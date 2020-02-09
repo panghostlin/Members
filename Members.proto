@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+/**************************************************************************
+**	SERVICES
+**************************************************************************/
+service MembersService {
+	rpc CreateMember(CreateMemberRequest) returns (CreateMemberResponse) {}
+	rpc LoginMember(LoginMemberRequest) returns (LoginMemberResponse) {}
+	rpc CheckAccessToken(CheckAccessTokenRequest) returns (CheckAccessTokenResponse) {}
+}
+
+/**************************************************************************
+**	RPCS
+**************************************************************************/
+message CreateMemberRequest {
+	string email = 1;
+	string password = 2;
+}
+message CreateMemberResponse {
+	bool success = 1;
+	string memberID = 2;
+	Cookie accessToken = 3;
+	string HashKey = 4;
+}
+
+
+message LoginMemberRequest {
+	string email = 1;
+	string password = 2;
+}
+message LoginMemberResponse {
+	bool success = 1;
+	string memberID = 2;
+	Cookie accessToken = 3;
+	string HashKey = 4;
+}
+
+
+message CheckAccessTokenRequest {
+	string accessToken = 1;
+}
+message CheckAccessTokenResponse {
+	bool success = 1;
+	string memberID = 2;
+	Cookie accessToken = 3;
+}
+
+
+/**************************************************************************
+**	HELPERS
+**************************************************************************/
+message	Cookie {
+	string value = 1;
+	int64 expiration = 2;
+}
