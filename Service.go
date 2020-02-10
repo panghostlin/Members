@@ -5,7 +5,7 @@
 ** @Filename:				service.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Wednesday 29 January 2020 - 13:40:18
+** @Last modified time:		Monday 10 February 2020 - 11:45:23
 *******************************************************************************/
 
 package			main
@@ -15,9 +15,10 @@ import			"context"
 import			"strconv"
 import			"strings"
 import			"github.com/microgolang/logs"
+import			"github.com/panghostlin/SDK/Members"
 import			P "github.com/microgolang/postgre"
 
-func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequest) (*CheckAccessTokenResponse, error) {
+func (s *server) CheckAccessToken(ctx context.Context, req *members.CheckAccessTokenRequest) (*members.CheckAccessTokenResponse, error) {
 	var	isTokenExpiredByError bool
 	var	isTokenExpired bool
 
@@ -32,7 +33,7 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			isTokenExpiredByError = true
 		} else {
 			logs.Error(err)
-			return &CheckAccessTokenResponse{Success: false}, err
+			return &members.CheckAccessTokenResponse{Success: false}, err
 		}
 	}
 
@@ -51,16 +52,16 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			P.S_SelectorWhere{Key: `ID`, Value: accessClaims.MemberID},
 		).One(&memberRefreshToken)
 		if (err != nil) {
-			return &CheckAccessTokenResponse{Success: false}, err
+			return &members.CheckAccessTokenResponse{Success: false}, err
 		}
 
 		refreshToken, refreshClaims, err := GetRefreshToken(memberRefreshToken)
 		if (err != nil) {
 			logs.Error(err)
-			return &CheckAccessTokenResponse{Success: false}, err
+			return &members.CheckAccessTokenResponse{Success: false}, err
 		} else if (!refreshToken.Valid) {
 			logs.Error(`AccessToken & refreshtoken are no longer valids`)
-			return &CheckAccessTokenResponse{Success: false}, nil
+			return &members.CheckAccessTokenResponse{Success: false}, nil
 		} else if (refreshClaims.MemberID == accessClaims.MemberID) {
 			/******************************************************************
 			**	Check if the JWT memberID is the same as in the Database
@@ -70,10 +71,10 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			).One(&memberID)
 			if (err != nil) {
 				logs.Error(err)
-				return &CheckAccessTokenResponse{Success: false}, err
+				return &members.CheckAccessTokenResponse{Success: false}, err
 			} else if (memberRefreshToken != refreshToken.Raw) {
 				logs.Error(memberRefreshToken, refreshToken.Raw)
-				return &CheckAccessTokenResponse{Success: false}, nil
+				return &members.CheckAccessTokenResponse{Success: false}, nil
 			}
 
 			/******************************************************************
@@ -82,7 +83,7 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			authCookie, expTime, err := SetAccessToken(memberID)
 			if (err != nil) {
 				logs.Error(err)
-				return &CheckAccessTokenResponse{Success: false}, err
+				return &members.CheckAccessTokenResponse{Success: false}, err
 			}
 
 			P.NewUpdator(PGR).Set(
@@ -91,17 +92,17 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			).Where(
 				P.S_UpdatorWhere{Key: `ID`, Value: memberID},
 			).Into(`members`).Do()
-			return &CheckAccessTokenResponse{
+			return &members.CheckAccessTokenResponse{
 				Success: true,
 				MemberID: memberID,
-				AccessToken: &Cookie{Value: authCookie, Expiration: expTime},
+				AccessToken: &members.Cookie{Value: authCookie, Expiration: expTime},
 			}, nil
 		} else {
-			return &CheckAccessTokenResponse{Success: false}, nil
+			return &members.CheckAccessTokenResponse{Success: false}, nil
 		}
 	} else if (!accessToken.Valid) {
 		logs.Error(err)
-		return &CheckAccessTokenResponse{Success: false}, err
+		return &members.CheckAccessTokenResponse{Success: false}, err
 	} else {
 		/**********************************************************************
 		**	Check if the JWT memberID is the same as in the Database
@@ -110,9 +111,9 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 			P.S_SelectorWhere{Key: `ID`, Value: accessClaims.MemberID},
 		).One(&memberID, &memberAccessToken, &memberAccessExp)
 		if (err != nil) {
-			return &CheckAccessTokenResponse{Success: false}, err
+			return &members.CheckAccessTokenResponse{Success: false}, err
 		} else if (memberAccessToken != req.GetAccessToken()) {
-			return &CheckAccessTokenResponse{Success: false}, nil
+			return &members.CheckAccessTokenResponse{Success: false}, nil
 		}
 		/**********************************************************************
 		**	If the access token is valid, we refresh the access token
@@ -120,26 +121,26 @@ func (s *server) CheckAccessToken(ctx context.Context, req *CheckAccessTokenRequ
 		// authCookie, expTime, err := SetAccessToken(member.ID.Hex())
 		// if (err != nil) {
 		// 	logs.Error(err)
-		// 	return &CheckAccessTokenResponse{Success: false}, err
+		// 	return &members.CheckAccessTokenResponse{Success: false}, err
 		// }
 		// member.AccessToken = sMemberToken{}
 		// memberAccessToken = authCookie
 		// member.AccessToken.Expiration = expTime
 		// Collection.UpdateId(member.ID, member)
 
-		return &CheckAccessTokenResponse{
+		return &members.CheckAccessTokenResponse{
 			Success: true,
 			MemberID: memberID,
-			AccessToken: &Cookie{Value: memberAccessToken, Expiration: memberAccessExp},
+			AccessToken: &members.Cookie{Value: memberAccessToken, Expiration: memberAccessExp},
 		}, nil
 	}
 }
 
-func (s *server) CreateMember(ctx context.Context, req *CreateMemberRequest) (*CreateMemberResponse, error) {
+func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequest) (*members.CreateMemberResponse, error) {
 	ID, err := P.NewInsertor(PGR).Values(P.S_InsertorWhere{Key: `Email`, Value: req.GetEmail()}).Into(`members`).Do()
 	if (err != nil) {
 		logs.Error(err)
-		return &CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{Success: false}, err
 	}
 
 	/**************************************************************************
@@ -148,7 +149,7 @@ func (s *server) CreateMember(ctx context.Context, req *CreateMemberRequest) (*C
 	refreshToken, refreshExpiration, err := SetRefreshToken(ID)
 	if (err != nil) {
 		logs.Error(err)
-		return &CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{Success: false}, err
 	}
 
 	/**************************************************************************
@@ -157,7 +158,7 @@ func (s *server) CreateMember(ctx context.Context, req *CreateMemberRequest) (*C
 	accessToken, accessExpiration, err := SetAccessToken(ID)
 	if (err != nil) {
 		logs.Error(err)
-		return &CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{Success: false}, err
 	}
 	
 	/**************************************************************************
@@ -175,7 +176,7 @@ func (s *server) CreateMember(ctx context.Context, req *CreateMemberRequest) (*C
 	if (err != nil) {
 		logs.Error(err)
 		P.NewDeletor(PGR).Into(`members`).Where(P.S_DeletorWhere{Key: `ID`, Value: ID}).Do()
-		return &CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{Success: false}, err
 	}
 	/**************************************************************************
 	**	Generate the user private keys
@@ -186,18 +187,18 @@ func (s *server) CreateMember(ctx context.Context, req *CreateMemberRequest) (*C
 	if (err != nil || !isSuccess) {
 		logs.Error(err)
 		P.NewDeletor(PGR).Into(`members`).Where(P.S_DeletorWhere{Key: `ID`, Value: ID}).Do()
-		return &CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{Success: false}, err
 	}
 
-	return &CreateMemberResponse{
+	return &members.CreateMemberResponse{
 		Success: true,
 		MemberID: ID,
-		AccessToken: &Cookie{Value: accessToken, Expiration: accessExpiration},
+		AccessToken: &members.Cookie{Value: accessToken, Expiration: accessExpiration},
 		HashKey: hashKey,
 	}, nil
 }
 
-func (s *server) LoginMember(ctx context.Context, req *LoginMemberRequest) (*LoginMemberResponse, error) {
+func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberRequest) (*members.LoginMemberResponse, error) {
 	var	memberID string
 	var	err error
 
@@ -209,7 +210,7 @@ func (s *server) LoginMember(ctx context.Context, req *LoginMemberRequest) (*Log
 		P.S_SelectorWhere{Key: `Email`, Value: req.GetEmail()},
 	).One(&memberID)
 	if (err != nil) {
-		return &LoginMemberResponse{Success: false}, nil
+		return &members.LoginMemberResponse{Success: false}, nil
 	}
 
 	/**************************************************************************
@@ -218,7 +219,7 @@ func (s *server) LoginMember(ctx context.Context, req *LoginMemberRequest) (*Log
 	**************************************************************************/
 	isSuccess, hashKey, err := checkMemberKeys(memberID, req.GetPassword())
 	if (err != nil || !isSuccess) {
-		return &LoginMemberResponse{Success: false}, nil
+		return &members.LoginMemberResponse{Success: false}, nil
 	}
 
 	/**************************************************************************
@@ -228,7 +229,7 @@ func (s *server) LoginMember(ctx context.Context, req *LoginMemberRequest) (*Log
 	accessToken, accessExpiration, err := SetAccessToken(memberID)
 	if (err != nil) {
 		logs.Error(err)
-		return &LoginMemberResponse{Success: false}, err
+		return &members.LoginMemberResponse{Success: false}, err
 	}
 
 	/**************************************************************************
@@ -242,16 +243,16 @@ func (s *server) LoginMember(ctx context.Context, req *LoginMemberRequest) (*Log
 	).Into(`members`).Do()
 	if (err != nil) {
 		logs.Error(err)
-		return &LoginMemberResponse{Success: false}, err
+		return &members.LoginMemberResponse{Success: false}, err
 	}
 
 	/**************************************************************************
 	**	Send back the informations to the Proxy
 	**************************************************************************/
-	return &LoginMemberResponse{
+	return &members.LoginMemberResponse{
 		Success: true,
 		MemberID: memberID,
-		AccessToken: &Cookie{Value: accessToken, Expiration: accessExpiration},
+		AccessToken: &members.Cookie{Value: accessToken, Expiration: accessExpiration},
 		HashKey: hashKey,
 	}, nil
 }
