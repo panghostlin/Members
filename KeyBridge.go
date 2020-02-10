@@ -5,7 +5,7 @@
 ** @Filename:				KeyBridge.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Monday 10 February 2020 - 11:50:06
+** @Last modified time:		Monday 10 February 2020 - 13:09:30
 *******************************************************************************/
 
 package			main
@@ -16,7 +16,7 @@ import			"github.com/panghostlin/SDK/Keys"
 import			_ "github.com/lib/pq"
 
 func	generateMemberKeys(memberID, memberPassword string) (bool, string, error) {
-	connection := bridgeMicroservice(`piwigo-keys:8011`)
+	connection := bridgeMicroservice(`panghostlin-keys:8011`)
 	defer connection.Close()
 
 	client := keys.NewKeysServiceClient(connection)
@@ -30,7 +30,7 @@ func	generateMemberKeys(memberID, memberPassword string) (bool, string, error) {
 	return result.GetSuccess(), result.GetHashKey(), nil
 }
 func	checkMemberKeys(memberID, memberPassword string) (bool, string, error) {
-	connection := bridgeMicroservice(`piwigo-keys:8011`)
+	connection := bridgeMicroservice(`panghostlin-keys:8011`)
 	defer connection.Close()
 
 	client := keys.NewKeysServiceClient(connection)
