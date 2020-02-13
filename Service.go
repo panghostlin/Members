@@ -5,7 +5,7 @@
 ** @Filename:				service.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Monday 10 February 2020 - 11:45:23
+** @Last modified time:		Thursday 13 February 2020 - 19:22:07
 *******************************************************************************/
 
 package			main
@@ -140,7 +140,7 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	ID, err := P.NewInsertor(PGR).Values(P.S_InsertorWhere{Key: `Email`, Value: req.GetEmail()}).Into(`members`).Do()
 	if (err != nil) {
 		logs.Error(err)
-		return &members.CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{}, err
 	}
 
 	/**************************************************************************
@@ -149,7 +149,7 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	refreshToken, refreshExpiration, err := SetRefreshToken(ID)
 	if (err != nil) {
 		logs.Error(err)
-		return &members.CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{}, err
 	}
 
 	/**************************************************************************
@@ -158,7 +158,7 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	accessToken, accessExpiration, err := SetAccessToken(ID)
 	if (err != nil) {
 		logs.Error(err)
-		return &members.CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{}, err
 	}
 	
 	/**************************************************************************
@@ -176,7 +176,7 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	if (err != nil) {
 		logs.Error(err)
 		P.NewDeletor(PGR).Into(`members`).Where(P.S_DeletorWhere{Key: `ID`, Value: ID}).Do()
-		return &members.CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{}, err
 	}
 	/**************************************************************************
 	**	Generate the user private keys
@@ -187,11 +187,10 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	if (err != nil || !isSuccess) {
 		logs.Error(err)
 		P.NewDeletor(PGR).Into(`members`).Where(P.S_DeletorWhere{Key: `ID`, Value: ID}).Do()
-		return &members.CreateMemberResponse{Success: false}, err
+		return &members.CreateMemberResponse{}, err
 	}
 
 	return &members.CreateMemberResponse{
-		Success: true,
 		MemberID: ID,
 		AccessToken: &members.Cookie{Value: accessToken, Expiration: accessExpiration},
 		HashKey: hashKey,
@@ -210,7 +209,7 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 		P.S_SelectorWhere{Key: `Email`, Value: req.GetEmail()},
 	).One(&memberID)
 	if (err != nil) {
-		return &members.LoginMemberResponse{Success: false}, nil
+		return &members.LoginMemberResponse{}, err
 	}
 
 	/**************************************************************************
@@ -219,7 +218,7 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	**************************************************************************/
 	isSuccess, hashKey, err := checkMemberKeys(memberID, req.GetPassword())
 	if (err != nil || !isSuccess) {
-		return &members.LoginMemberResponse{Success: false}, nil
+		return &members.LoginMemberResponse{}, err
 	}
 
 	/**************************************************************************
@@ -229,7 +228,7 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	accessToken, accessExpiration, err := SetAccessToken(memberID)
 	if (err != nil) {
 		logs.Error(err)
-		return &members.LoginMemberResponse{Success: false}, err
+		return &members.LoginMemberResponse{}, err
 	}
 
 	/**************************************************************************
@@ -243,14 +242,13 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	).Into(`members`).Do()
 	if (err != nil) {
 		logs.Error(err)
-		return &members.LoginMemberResponse{Success: false}, err
+		return &members.LoginMemberResponse{}, err
 	}
 
 	/**************************************************************************
 	**	Send back the informations to the Proxy
 	**************************************************************************/
 	return &members.LoginMemberResponse{
-		Success: true,
 		MemberID: memberID,
 		AccessToken: &members.Cookie{Value: accessToken, Expiration: accessExpiration},
 		HashKey: hashKey,
