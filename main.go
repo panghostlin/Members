@@ -5,7 +5,7 @@
 ** @Filename:				main.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Monday 10 February 2020 - 11:50:17
+** @Last modified time:		Friday 14 February 2020 - 17:04:10
 *******************************************************************************/
 
 package			main
@@ -21,10 +21,21 @@ import			"github.com/microgolang/logs"
 import			"google.golang.org/grpc"
 import			"google.golang.org/grpc/credentials"
 import			"github.com/panghostlin/SDK/Members"
+import			"github.com/panghostlin/SDK/Keys"
+import			"github.com/panghostlin/SDK/Pictures"
 import			_ "github.com/lib/pq"
 
 type	server struct {}
 var		PGR *sql.DB
+
+type	sClients	struct {
+	members		members.MembersServiceClient
+	keys		keys.KeysServiceClient
+	pictures	pictures.PicturesServiceClient
+	albums		pictures.AlbumsServiceClient
+}
+var		bridges map[string](*grpc.ClientConn)
+var		clients = &sClients{}
 
 func	connectToDatabase() {
 	username := os.Getenv("POSTGRE_USERNAME")
@@ -56,7 +67,7 @@ func	connectToDatabase() {
 
 	logs.Success(`Connected to DB - Localhost`)
 }
-func	bridgeInsecureMicroservice(serverName string) (*grpc.ClientConn) {
+func	bridgeInsecureMicroservice(serverName string, clientMS string) (*grpc.ClientConn) {
 	logs.Warning("Using insecure connection")
 	conn, err := grpc.Dial(serverName, grpc.WithInsecure())
     if err != nil {
@@ -64,46 +75,59 @@ func	bridgeInsecureMicroservice(serverName string) (*grpc.ClientConn) {
 		return nil
 	}
 
+	if (clientMS == `members`) {
+		clients.members = members.NewMembersServiceClient(conn)
+	} else if (clientMS == `keys`) {
+		clients.keys = keys.NewKeysServiceClient(conn)
+	} else if (clientMS == `pictures`) {
+		clients.pictures = pictures.NewPicturesServiceClient(conn)
+		clients.albums = pictures.NewAlbumsServiceClient(conn)
+	}
+
 	return conn
 }
-func	bridgeMicroservice(serverName string) (*grpc.ClientConn) {
+func	bridgeMicroservice(serverName string, clientMS string) (*grpc.ClientConn) {
 	crt := `/env/client.crt`
     key := `/env/client.key`
 	caCert  := `/env/ca.crt`
 
-    // Load the client certificates from disk
     certificate, err := tls.LoadX509KeyPair(crt, key)
     if err != nil {
 		logs.Warning("Did not connect: " + err.Error())
-		return bridgeInsecureMicroservice(serverName)
+		return bridgeInsecureMicroservice(serverName, clientMS)
     }
 
-    // Create a certificate pool from the certificate authority
     certPool := x509.NewCertPool()
     ca, err := ioutil.ReadFile(caCert)
     if err != nil {
 		logs.Warning("Did not connect: " + err.Error())
-		return bridgeInsecureMicroservice(serverName)
+		return bridgeInsecureMicroservice(serverName, clientMS)
     }
 
-    // Append the certificates from the CA
     if ok := certPool.AppendCertsFromPEM(ca); !ok {
 		logs.Warning("Did not connect: " + err.Error())
-		return bridgeInsecureMicroservice(serverName)
+		return bridgeInsecureMicroservice(serverName, clientMS)
     }
 
     creds := credentials.NewTLS(&tls.Config{
-        ServerName:   serverName, // NOTE: this is required!
+        ServerName:   serverName,
         Certificates: []tls.Certificate{certificate},
 		RootCAs:      certPool,
 		InsecureSkipVerify: true,
     })
 
-    // Create a connection with the TLS credentials
 	conn, err := grpc.Dial(serverName, grpc.WithTransportCredentials(creds))
     if err != nil {
 		logs.Warning("Did not connect: " + err.Error())
-		return bridgeInsecureMicroservice(serverName)
+		return bridgeInsecureMicroservice(serverName, clientMS)
+	}
+
+	if (clientMS == `members`) {
+		clients.members = members.NewMembersServiceClient(conn)
+	} else if (clientMS == `keys`) {
+		clients.keys = keys.NewKeysServiceClient(conn)
+	} else if (clientMS == `pictures`) {
+		clients.pictures = pictures.NewPicturesServiceClient(conn)
 	}
 
 	return conn
@@ -174,5 +198,9 @@ func	serveMicroservice() {
 
 func	main()	{
 	connectToDatabase()
+
+	bridges = make(map[string](*grpc.ClientConn))
+	bridges[`keys`] = bridgeMicroservice(`panghostlin-keys:8011`, `keys`)
+
 	serveMicroservice()
 }
