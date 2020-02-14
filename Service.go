@@ -5,7 +5,7 @@
 ** @Filename:				service.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Thursday 13 February 2020 - 19:22:07
+** @Last modified time:		Friday 14 February 2020 - 18:13:26
 *******************************************************************************/
 
 package			main
@@ -183,8 +183,8 @@ func (s *server) CreateMember(ctx context.Context, req *members.CreateMemberRequ
 	**	Delete the user if the generation fails
 	**	-----> TODO: Should-it be a goroutine ? <-----
 	**************************************************************************/
-	isSuccess, hashKey, err := generateMemberKeys(ID, req.GetPassword())
-	if (err != nil || !isSuccess) {
+	hashKey, err := generateMemberKeys(ID, req.GetPassword())
+	if (err != nil) {
 		logs.Error(err)
 		P.NewDeletor(PGR).Into(`members`).Where(P.S_DeletorWhere{Key: `ID`, Value: ID}).Do()
 		return &members.CreateMemberResponse{}, err
@@ -216,8 +216,8 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	**	We got the memberID, we can not check the password hash with the
 	**	password send as argument
 	**************************************************************************/
-	isSuccess, hashKey, err := checkMemberKeys(memberID, req.GetPassword())
-	if (err != nil || !isSuccess) {
+	hashKey, err := checkMemberKeys(memberID, req.GetPassword())
+	if (err != nil) {
 		return &members.LoginMemberResponse{}, err
 	}
 
@@ -254,3 +254,36 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 		HashKey: hashKey,
 	}, nil
 }
+
+func (s *server) GetMember(ctx context.Context, req *members.GetMemberRequest) (*members.GetMemberResponse, error) {
+	var	memberID string
+	var	email string
+	var	err error
+
+	/**************************************************************************
+	**	SELECT the member matching the requested Email from the member Table
+	**	and get it's ID
+	**************************************************************************/
+	err = P.NewSelector(PGR).Select(`ID`, `Email`).From(`members`).Where(
+		P.S_SelectorWhere{Key: `ID`, Value: req.GetMemberID()},
+	).One(&memberID, &email)
+	if (err != nil) {
+		return &members.GetMemberResponse{}, err
+	}
+
+	/**************************************************************************
+	**	We got the memberID, we can not check the password hash with the
+	**	password send as argument
+	**************************************************************************/
+	publicKey, privateKey, err := getMemberKeys(memberID, req.GetHashKey())
+	if (err != nil) {
+		return &members.GetMemberResponse{}, err
+	}
+
+	/**************************************************************************
+	**	Send back the informations to the Proxy
+	**************************************************************************/
+	memberObj := members.Member{ID: memberID, Email: email, PublicKey: publicKey, PrivateKey: privateKey}
+	return &members.GetMemberResponse{Member: &memberObj}, nil
+}
+

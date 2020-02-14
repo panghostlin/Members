@@ -5,41 +5,37 @@
 ** @Filename:				KeyBridge.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Monday 10 February 2020 - 13:09:30
+** @Last modified time:		Friday 14 February 2020 - 18:11:08
 *******************************************************************************/
 
 package			main
 
 import			"context"
-import			"github.com/microgolang/logs"
 import			"github.com/panghostlin/SDK/Keys"
 import			_ "github.com/lib/pq"
 
-func	generateMemberKeys(memberID, memberPassword string) (bool, string, error) {
-	connection := bridgeMicroservice(`panghostlin-keys:8011`)
-	defer connection.Close()
-
-	client := keys.NewKeysServiceClient(connection)
+func	generateMemberKeys(memberID, memberPassword string) (string, error) {
 	request := &keys.CreateKeysRequest{Password: memberPassword, MemberID: memberID}
-
-	result, err := client.CreateKeys(context.Background(), request)
-	if (err != nil) {
-		logs.Error("Could not create keys", err)
-		return false, ``, err
-	}
-	return result.GetSuccess(), result.GetHashKey(), nil
+	result, err := clients.keys.CreateKeys(context.Background(), request)
+	return result.GetHashKey(), err
 }
-func	checkMemberKeys(memberID, memberPassword string) (bool, string, error) {
-	connection := bridgeMicroservice(`panghostlin-keys:8011`)
-	defer connection.Close()
-
-	client := keys.NewKeysServiceClient(connection)
+func	checkMemberKeys(memberID, memberPassword string) (string, error) {
 	request := &keys.CheckPasswordRequest{Password: memberPassword, MemberID: memberID}
-
-	result, err := client.CheckPassword(context.Background(), request)
-	if (err != nil) {
-		logs.Error("Could not verify password", err)
-		return false, ``, err
-	}
-	return result.GetSuccess(), result.GetHashKey(), nil
+	result, err := clients.keys.CheckPassword(context.Background(), request)
+	return result.GetHashKey(), err
+}
+func	getMemberPublicKey(memberID string) (string, error) {
+	request := &keys.GetPublicKeyRequest{MemberID: memberID}
+	result, err := clients.keys.GetPublicKey(context.Background(), request)
+	return result.GetPublicKey(), err
+}
+func	getMemberPrivateKey(memberID, hashKey string) (string, error) {
+	request := &keys.GetPrivateKeyRequest{MemberID: memberID, HashKey: hashKey}
+	result, err := clients.keys.GetPrivateKey(context.Background(), request)
+	return result.GetPrivateKey(), err
+}
+func	getMemberKeys(memberID, hashKey string) (string, string, error) {
+	request := &keys.GetKeysRequest{MemberID: memberID, HashKey: hashKey}
+	result, err := clients.keys.GetKeys(context.Background(), request)
+	return result.GetPublicKey(), result.GetPrivateKey(), err
 }
