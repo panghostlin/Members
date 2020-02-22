@@ -5,7 +5,7 @@
 ** @Filename:				main.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Friday 14 February 2020 - 17:04:10
+** @Last modified time:		Friday 21 February 2020 - 17:49:37
 *******************************************************************************/
 
 package			main
@@ -21,7 +21,6 @@ import			"github.com/microgolang/logs"
 import			"google.golang.org/grpc"
 import			"google.golang.org/grpc/credentials"
 import			"github.com/panghostlin/SDK/Members"
-import			"github.com/panghostlin/SDK/Keys"
 import			"github.com/panghostlin/SDK/Pictures"
 import			_ "github.com/lib/pq"
 
@@ -30,7 +29,6 @@ var		PGR *sql.DB
 
 type	sClients	struct {
 	members		members.MembersServiceClient
-	keys		keys.KeysServiceClient
 	pictures	pictures.PicturesServiceClient
 	albums		pictures.AlbumsServiceClient
 }
@@ -53,6 +51,16 @@ func	connectToDatabase() {
 		AccessExp bigint,
 		RefreshToken varchar,
 		RefreshExp bigint,
+
+		PublicKey varchar NULL,
+		PrivateKey varchar NULL,
+		PrivateKeyIV varchar NULL,
+		PrivateKeySalt varchar NULL,
+
+		PasswordArgon2Hash varchar NULL,
+		PasswordArgon2IV varchar NULL,
+		PasswordScryptHash varchar NULL,
+		PasswordScryptIV varchar NULL,
 
 		CONSTRAINT members_pk PRIMARY KEY (ID),
 		CONSTRAINT members_un UNIQUE (Email)
@@ -77,8 +85,6 @@ func	bridgeInsecureMicroservice(serverName string, clientMS string) (*grpc.Clien
 
 	if (clientMS == `members`) {
 		clients.members = members.NewMembersServiceClient(conn)
-	} else if (clientMS == `keys`) {
-		clients.keys = keys.NewKeysServiceClient(conn)
 	} else if (clientMS == `pictures`) {
 		clients.pictures = pictures.NewPicturesServiceClient(conn)
 		clients.albums = pictures.NewAlbumsServiceClient(conn)
@@ -124,8 +130,6 @@ func	bridgeMicroservice(serverName string, clientMS string) (*grpc.ClientConn) {
 
 	if (clientMS == `members`) {
 		clients.members = members.NewMembersServiceClient(conn)
-	} else if (clientMS == `keys`) {
-		clients.keys = keys.NewKeysServiceClient(conn)
 	} else if (clientMS == `pictures`) {
 		clients.pictures = pictures.NewPicturesServiceClient(conn)
 	}
@@ -198,9 +202,5 @@ func	serveMicroservice() {
 
 func	main()	{
 	connectToDatabase()
-
-	bridges = make(map[string](*grpc.ClientConn))
-	bridges[`keys`] = bridgeMicroservice(`panghostlin-keys:8011`, `keys`)
-
 	serveMicroservice()
 }
