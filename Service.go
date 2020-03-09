@@ -5,7 +5,7 @@
 ** @Filename:				service.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Friday 21 February 2020 - 17:33:34
+** @Last modified time:		Monday 09 March 2020 - 19:14:04
 *******************************************************************************/
 
 package			main
@@ -304,4 +304,27 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 			PublicKey: PublicKey,
 		},
 	}, nil
+}
+
+func (s *server) GetMember(ctx context.Context, req *members.GetMemberRequest) (*members.GetMemberResponse, error) {
+	var	err error
+	var	response members.GetMemberResponse
+
+	/**************************************************************************
+	**	SELECT the member matching the requested Email from the member Table
+	**	and get it's ID
+	**************************************************************************/
+	err = P.NewSelector(PGR).
+	Select(`ID`, `Email`, `UsedStorage`, `FullUsedStorage`).
+	From(`members`).
+	Where(P.S_SelectorWhere{Key: `ID`, Value: req.GetMemberID()}).
+	One(&response.MemberID, &response.Email, &response.UsedStorage, &response.FullUsedStorage)
+	if (err != nil) {
+		return &members.GetMemberResponse{}, err
+	}
+
+	/**************************************************************************
+	**	Send back the informations to the Proxy
+	**************************************************************************/
+	return &response, nil
 }

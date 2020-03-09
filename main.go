@@ -5,7 +5,7 @@
 ** @Filename:				main.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Friday 21 February 2020 - 17:49:37
+** @Last modified time:		Monday 09 March 2020 - 12:11:06
 *******************************************************************************/
 
 package			main
@@ -61,6 +61,9 @@ func	connectToDatabase() {
 		PasswordArgon2IV varchar NULL,
 		PasswordScryptHash varchar NULL,
 		PasswordScryptIV varchar NULL,
+
+		UsedStorage float8 NOT NULL DEFAULT 0,
+		FullUsedStorage float8 NOT NULL DEFAULT 0,
 
 		CONSTRAINT members_pk PRIMARY KEY (ID),
 		CONSTRAINT members_un UNIQUE (Email)
