@@ -5,7 +5,7 @@
 ** @Filename:				service.go
 **
 ** @Last modified by:		Tbouder
-** @Last modified time:		Monday 09 March 2020 - 19:14:04
+** @Last modified time:		Wednesday 01 April 2020 - 11:56:53
 *******************************************************************************/
 
 package			main
@@ -274,6 +274,13 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	if (err != nil) {
 		return &members.LoginMemberResponse{}, err
 	}
+	/**************************************************************************
+	**	Same for refresh -> New login
+	**************************************************************************/
+	refreshToken, refreshExpiration, err := SetRefreshToken(memberID)
+	if (err != nil) {
+		return &members.LoginMemberResponse{}, err
+	}
 
 	/**************************************************************************
 	**	We can now update the user in the database
@@ -281,6 +288,8 @@ func (s *server) LoginMember(ctx context.Context, req *members.LoginMemberReques
 	err = P.NewUpdator(PGR).Set(
 		P.S_UpdatorSetter{Key: `AccessToken`, Value: accessToken},
 		P.S_UpdatorSetter{Key: `AccessExp`, Value: strconv.FormatInt(accessExpiration, 10)},
+		P.S_UpdatorSetter{Key: `RefreshToken`, Value: refreshToken},
+		P.S_UpdatorSetter{Key: `RefreshExp`, Value: strconv.FormatInt(refreshExpiration, 10)},
 	).Where(
 		P.S_UpdatorWhere{Key: `ID`, Value: memberID},
 	).Into(`members`).Do()
