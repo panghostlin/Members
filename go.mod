@@ -6,7 +6,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fatih/color v1.9.0 // indirect
-	github.com/lib/pq v1.3.0
+	github.com/lib/pq v1.7.0
 	github.com/microgolang/logs v0.0.0-20191128163715-df5826543c89
 	github.com/microgolang/postgre v0.0.0-20200206183946-fb501c758fd4
 	github.com/panghostlin/SDK v0.0.0-20200309180857-7ead012a6dd5
