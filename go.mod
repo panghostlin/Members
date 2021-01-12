@@ -11,5 +11,5 @@ require (
 	github.com/microgolang/postgre v0.0.0-20200206183946-fb501c758fd4
 	github.com/panghostlin/SDK v0.0.0-20200309180857-7ead012a6dd5
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-	google.golang.org/grpc v1.28.1
+	google.golang.org/grpc v1.34.1
 )
